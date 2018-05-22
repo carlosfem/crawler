@@ -74,6 +74,10 @@ class TestPageMethods(unittest.TestCase):
         self.assertFalse(page.is_product)
         self.assertEqual(page.product_name, page._INVALID_PRODUCT)
 
+    def test_free_memory(self):
+        """Tests 'free' method to dump unused memory"""
+        raise NotImplementedError
+
 
 class TestCrawlerLogic(unittest.TestCase):
     """Tests the core logic of the crawler"""

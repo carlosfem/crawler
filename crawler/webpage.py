@@ -44,29 +44,41 @@ class WebPage():
         self.parent_page = parent_page
         self.product_tag = product_tag
         self.product_class = product_class
+        self.timeout = timeout
 
+        self._soup = ""
         self._title = ""
         self._domain = ""
         self._product_name = ""
         self._child_urls = set()
+        self.soup  # Call the property to make the request
 
+    def free(self):
+        """Frees memory by reseting the _soup object and the child URLs"""
+        self._child_urls.clear()
+        self._soup = ""
+
+    @property
+    @Decorators.initializer("_soup")
+    def soup(self):
+        """BeautifulSoup: requests the URL and parse the html"""
         # Gets the response from the HTTP request and creates the bs4 parser
         request = urllib.request.Request(
             self.url, headers={"User-Agent": self._AGENT}
         )
-
         # Gets the response treating for potential timeouts
         try:
-            response = urllib.request.urlopen(request, timeout=timeout)
+            response = urllib.request.urlopen(request, timeout=self.timeout)
             self._soup = bs4.BeautifulSoup(response, "html.parser")
         except socket.timeout:
             raise TimeoutException("Timeout occurred while requesting page.")
+        return self._soup
 
     @property
     @Decorators.initializer("_title")
     def title(self):
         """str: return the title of the page (first occurrence)."""
-        self._title = self._soup.title.string
+        self._title = self.soup.title.string
         return self._title
 
     @property
@@ -82,7 +94,8 @@ class WebPage():
         """str: return the name of the product or an invalid product identifier
                 if the name tag is not found.
         """
-        div = self._soup.find(self.product_tag, {"class": self.product_class})
+        soup = self.soup
+        div = soup.find(self.product_tag, {"class": self.product_class})
         self._product_name = self._INVALID_PRODUCT if div is None else div.text
         return self._product_name
 
@@ -97,7 +110,7 @@ class WebPage():
         """list: return a list with all the child pages originated from the
                  same domain without duplicates. Excludes the parent page.
         """
-        urls = [url["href"] for url in self._soup.find_all("a", href=True)]
+        urls = [url["href"] for url in self.soup.find_all("a", href=True)]
         for url in urls:
             domain = sh.get_domain(url)
             if domain == self.domain:
