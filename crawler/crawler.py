@@ -12,6 +12,7 @@ import urllib.error
 
 import webpage as wp
 from helpers import CsvHelper
+from thread_manager import ThreadingManager
 
 
 class Crawler(object):
@@ -20,19 +21,25 @@ class Crawler(object):
     _garbage_collection = 300  # collects the garbage every 'n' visited pages
     _timeout = 10  # seconds before raising wp.TimeoutException
 
-    def __init__(self, domain, visits_limit=1e4):
+    def __init__(
+            self, domain, visits_limit=1e4, greedy=True,
+            indentity_target=lambda page: True):
+
         self.root_page = wp.WebPage(domain)
-        self.product_pages = {}
+        self.target_pages = {}
         self.other_pages = {}
         self.visited_urls = set()
         self.invalid_urls = set()
+
         self.visits_limit = visits_limit
+        self.greedy = greedy
+        self.identify_target = indentity_target
 
         self._inner_urls = set()
 
     def export_csv(self, filename):
         """Export the results to a csv file."""
-        CsvHelper.pages_to_csv(filename, self.product_pages.values())
+        CsvHelper.pages_to_csv(filename, self.target_pages.values())
 
     def run(self, recursive=True):
         """Run the crawling algorithm."""
@@ -74,19 +81,26 @@ class Crawler(object):
         """
 
         unvisited = self._get_unvisited(page.child_urls)
-
-        # Outer loop. Ends when there are no new non visited urls
-        while len(unvisited) > 0:
+        while len(unvisited) > 0 and len(self.visited_urls) < self.visits_limit:
             self._inner_urls = set()
-            for url in unvisited:
-                if len(self.visited_urls) > self.visits_limit:
-                    return
-                if len(self.visited_urls) % self._garbage_collection == 0:
-                    gc.collect()
-                self._handle_new_page(page, url, self._increment_inner_urls)
+            manager = ThreadingManager(self, list(unvisited), 10, "_inner_loop")
+            manager.manage()
 
             unvisited = self._get_unvisited(self._inner_urls)
-            print("There are {} URLs to visit on the next iteration".format(len(unvisited)))
+            print("There are {} URLs to visit on the next iteration".format(len(unvisited)), end="")
+
+    def _inner_loop(self, queue):
+        """Runs the inner loop of the iterative process.
+        Args:
+            queue (Queue): used for threading.
+        """
+        unvisited = queue.get()
+        for url in unvisited:
+            if len(self.visited_urls) > self.visits_limit:
+                return
+            if len(self.visited_urls) % self._garbage_collection == 0:
+                gc.collect()
+            self._handle_new_page(None, url, self._increment_inner_urls)
 
     def _get_unvisited(self, urls):
         """set: Return the unvisited URLs among the ones given."""
@@ -110,12 +124,15 @@ class Crawler(object):
 
         try:
             new_page = wp.WebPage(url, parent_page=page, timeout=self._timeout)
-            if new_page.is_product:
-                self.product_pages[new_page.url] = new_page
+            if self.identify_target(new_page):
+                self.target_pages[new_page.url] = new_page
             else:
                 self.other_pages[new_page.url] = new_page
 
             next_setp(new_page)  # recursive call or set increment
+
+            if not self.greedy:
+                new_page.free()  # frees memory after parsing
 
         except (urllib.error.HTTPError, wp.TimeoutException) as e:
             self._on_timeout_exception(url, e)
@@ -138,20 +155,22 @@ class Crawler(object):
 
 if __name__ == "__main__":
 
-#    t = time.time()
-#
-#    try:
-#        domain = "https://www.epocacosmeticos.com.br"
-#        crawler = Crawler(domain, visits_limit=100)
-#        crawler.run(recursive=False)
-#        crawler.export_csv("output")
-#    except KeyboardInterrupt:
-#        print("Crawling interrupted by the user!")
-#
-#    print("Process completed in {} seconds".format(time.time() - t))
+    t = time.time()
+
+    try:
+        domain = "https://www.epocacosmeticos.com.br"
+        crawler = Crawler(domain, visits_limit=20000, greedy=False,
+                          indentity_target=lambda page: page.is_product)
+
+        crawler.run(recursive=False)
+        crawler.export_csv("output")
+    except KeyboardInterrupt:
+        print("Crawling interrupted by the user!")
+
+    print("Process completed in {} seconds".format(time.time() - t))
 
 
-    domain = "https://www.epocacosmeticos.com.br"
-    page = wp.WebPage(domain)
+#    domain = "https://www.epocacosmeticos.com.br"
+#    page = wp.WebPage(domain)
 
     ## TESTE A EFICIENCIA DA _increment_inner_urls

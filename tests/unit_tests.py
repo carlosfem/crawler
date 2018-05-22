@@ -20,7 +20,7 @@ from helpers import StringHelper as sh
 
 
 class TestPageMethods(unittest.TestCase):
-    """Tests the behaviour of the WebPage class"""
+    """Tests the behaviour of the WebPage class."""
 
     _domain = "www.epocacosmeticos.com.br"
 
@@ -78,9 +78,13 @@ class TestPageMethods(unittest.TestCase):
         """Tests 'free' method to dump unused memory"""
         raise NotImplementedError
 
+class TestHelperFunctions(unittest.TestCase):
+    """Tests the helper functions."""
+    pass
+
 
 class TestCrawlerLogic(unittest.TestCase):
-    """Tests the core logic of the crawler"""
+    """Tests the core logic of the crawler."""
 
     def test_export_csv(self):
         """Tests csv is correctly exported given a list of pages."""
@@ -113,7 +117,7 @@ class TestCrawlerLogic(unittest.TestCase):
 
 
 class DummyThreadingTester(object):
-    """Dummy class to test the threading manager"""
+    """Dummy class to test the threading manager."""
 
     def __init__(self, operations, sleeptime=1):
         self.operations = operations
