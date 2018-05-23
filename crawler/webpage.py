@@ -22,10 +22,9 @@ class WebPage():
 
     Attributes:
         url (str): url of the page, must be a valid url.
-        timeout (float): time in seconds before timing out the request.
-        parent_page (WebPage): previous page in the tree.
         product_tag (str): type of html tag that identifies the product.
         product_class (str): class of the html tag that identifies the product.
+        timeout (float): time in seconds before timing out the request.
 
     Raises:
         URLError: If the url is invalid.
@@ -37,21 +36,27 @@ class WebPage():
     _AGENT = "Academic crawler 1.0 created by Carlos Monteiro. Strictly for python studies."
 
     def __init__(
-            self, url, parent_page=None, product_tag="div",
+            self, url, product_tag="div",
             product_class="productName", timeout=2):
 
         self.url = sh.safe_url(url)
-        self.parent_page = parent_page
         self.product_tag = product_tag
         self.product_class = product_class
         self.timeout = timeout
 
         self._soup = ""
-        self._title = ""
-        self._domain = ""
-        self._product_name = ""
         self._child_urls = set()
-        self.soup  # Call the property to make the request
+
+        div = self.soup.find(self.product_tag, {"class": self.product_class})
+        title = self.soup.title
+
+        self.title = title.string
+        self.domain = sh.get_domain(self.url)
+        self.product_name = self._INVALID_PRODUCT if div is None else div.text
+
+        # dump
+        del(div)
+        del(title)
 
     def free(self):
         """Frees memory by reseting the _soup object and the child URLs"""
@@ -75,36 +80,6 @@ class WebPage():
         return self._soup
 
     @property
-    @Decorators.initializer("_title")
-    def title(self):
-        """str: return the title of the page (first occurrence)."""
-        self._title = self.soup.title.string
-        return self._title
-
-    @property
-    @Decorators.initializer("_domain")
-    def domain(self):
-        """str: return the domain of the url."""
-        self._domain = sh.get_domain(self.url)
-        return self._domain
-
-    @property
-    @Decorators.initializer("_product_name")
-    def product_name(self):
-        """str: return the name of the product or an invalid product identifier
-                if the name tag is not found.
-        """
-        soup = self.soup
-        div = soup.find(self.product_tag, {"class": self.product_class})
-        self._product_name = self._INVALID_PRODUCT if div is None else div.text
-        return self._product_name
-
-    @property
-    def is_product(self):
-        """bool: return True if the page is a product page."""
-        return self.product_name != self._INVALID_PRODUCT
-
-    @property
     @Decorators.initializer("_child_urls")
     def child_urls(self):
         """list: return a list with all the child pages originated from the
@@ -121,6 +96,11 @@ class WebPage():
                 continue
             self._child_urls.add(full_url)
         return self._child_urls
+
+    @property
+    def is_product(self):
+        """bool: return True if the page is a product page."""
+        return self.product_name != self._INVALID_PRODUCT
 
     def __str__(self):
         """Overloads the 'str' method"""
