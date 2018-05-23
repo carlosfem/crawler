@@ -9,8 +9,8 @@ import bs4
 import socket
 import urllib.request
 
+import helpers
 from decorators import Decorators
-from helpers import StringHelper as sh
 
 
 class TimeoutException(Exception):
@@ -39,7 +39,7 @@ class WebPage():
             self, url, product_tag="div",
             product_class="productName", timeout=2):
 
-        self.url = sh.safe_url(url)
+        self.url = helpers.safe_url(url)
         self.product_tag = product_tag
         self.product_class = product_class
         self.timeout = timeout
@@ -48,15 +48,13 @@ class WebPage():
         self._child_urls = set()
 
         div = self.soup.find(self.product_tag, {"class": self.product_class})
-        title = self.soup.title
 
-        self.title = title.string
-        self.domain = sh.get_domain(self.url)
+        self.title = self.soup.find("title").text
+        self.domain = helpers.get_domain(self.url)
         self.product_name = self._INVALID_PRODUCT if div is None else div.text
 
         # dump
-        del(div)
-        del(title)
+        del div
 
     def free(self):
         """Frees memory by reseting the _soup object and the child URLs"""
@@ -87,11 +85,11 @@ class WebPage():
         """
         urls = [url["href"] for url in self.soup.find_all("a", href=True)]
         for url in urls:
-            domain = sh.get_domain(url)
+            domain = helpers.get_domain(url)
             if domain == self.domain:
-                full_url = sh.safe_url(url)
+                full_url = helpers.safe_url(url)
             elif domain == "":
-                full_url = sh.safe_url(self.domain + url)
+                full_url = helpers.safe_url(self.domain + url)
             else:
                 continue
             self._child_urls.add(full_url)

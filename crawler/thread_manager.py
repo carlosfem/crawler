@@ -7,7 +7,8 @@ Created on Sun May 20 15:04:56 2018
 
 import queue
 import threading
-from helpers import ListHelper as lh
+
+import helpers
 
 
 class ThreadingManager(object):
@@ -36,7 +37,7 @@ class ThreadingManager(object):
     def manage(self):
         """Manage the processing, splitting the task between the workres."""
         n_bundles = int(len(self.elements)/self.n_workers)
-        bundles = list(lh.chunks(self.elements, n_bundles))
+        bundles = list(helpers.chunks(self.elements, n_bundles))
 
         for bundle in bundles:
             self.queue.put(bundle)

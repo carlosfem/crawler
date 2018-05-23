@@ -10,8 +10,8 @@ import gc
 import time
 import urllib.error
 
+import helpers
 import webpage as wp
-from helpers import CsvHelper
 from thread_manager import ThreadingManager
 
 
@@ -39,7 +39,7 @@ class Crawler(object):
 
     def export_csv(self, filename):
         """Export the results to a csv file."""
-        CsvHelper.pages_to_csv(filename, self.target_pages.values())
+        helpers.pages_to_csv(filename, self.target_pages.values())
 
     def iterative_crawl(self, n_workers):
         """Iterative function to find and store all pages within a domain.
@@ -53,13 +53,13 @@ class Crawler(object):
             5 - Update the non visited URL set keep going with the outer loop.
         """
 
-        unvisited = self._get_unvisited(self.root_page.child_urls)
+        unvisited = self._get_unvisited_urls(self.root_page.child_urls)
         while len(unvisited) > 0 and len(self.visited_urls) < self.visits_limit:
             self._inner_urls = set()
             manager = ThreadingManager(self, list(unvisited), n_workers, "_inner_loop")
             manager.manage()
 
-            unvisited = self._get_unvisited(self._inner_urls)
+            unvisited = self._get_unvisited_urls(self._inner_urls)
             print("There are {} URLs to visit on the next iteration".format(len(unvisited)), end="")
 
     def _inner_loop(self, queue):
@@ -73,9 +73,9 @@ class Crawler(object):
                 return
             if len(self.visited_urls) % self._garbage_collection == 0:
                 gc.collect()
-            self._handle_new_page(url, self._increment_inner_urls)
+            self._handle_new_page(url)
 
-    def _get_unvisited(self, urls):
+    def _get_unvisited_urls(self, urls):
         """set: Return the unvisited URLs among the ones given."""
         unvisited = set()
         for url in urls:
@@ -83,7 +83,7 @@ class Crawler(object):
                 unvisited.add(url)
         return unvisited
 
-    def _handle_new_page(self, url, next_setp):
+    def _handle_new_page(self, url):
         """Handles the visit to a new page.
         Args:
             url (str): the url being requested.
@@ -119,10 +119,6 @@ class Crawler(object):
         time.sleep(wait)
         self.visited_urls.remove(url)
 
-    def _increment_inner_urls(self, page):
-        """Increment the inner url set (syntactic sugar)."""
-        self._inner_urls |= set(page.child_urls)
-
 
 if __name__ == "__main__":
 
@@ -130,11 +126,11 @@ if __name__ == "__main__":
 
     try:
         domain = "https://www.epocacosmeticos.com.br"
-        crawler = Crawler(domain, visits_limit=5000, greedy=False,
+        crawler = Crawler(domain, visits_limit=1000, greedy=False,
                           indentity_target=lambda page: page.is_product)
 
-        crawler.iterative_crawl()
-        crawler.export_csv("output")
+        crawler.iterative_crawl(15)
+        #crawler.export_csv("output")
     except KeyboardInterrupt:
         print("Crawling interrupted by the user!")
 

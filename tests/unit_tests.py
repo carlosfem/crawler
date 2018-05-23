@@ -13,10 +13,10 @@ import unittest
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../crawler")
 
+import helpers
 import webpage as wp
 import crawler as cw
 import thread_manager as tm
-from helpers import StringHelper as sh
 
 
 class TestPageMethods(unittest.TestCase):
@@ -48,14 +48,14 @@ class TestPageMethods(unittest.TestCase):
         # Verifies that there are no child pages from different domains
         diff_domain_children = [
             child for child in page.child_urls
-            if sh.get_domain(child) != page.domain
+            if helpers.get_domain(child) != page.domain
         ]
         self.assertFalse(diff_domain_children)
 
     def test_valid_product_page(self):
         """Tests if a valid product url yields a full product page object"""
         route = "/hypnose-eau-de-toilette-lancome-perfume-feminino/p"
-        url = sh.get_url(self._domain, route)
+        url = helpers.get_url(self._domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
@@ -66,7 +66,7 @@ class TestPageMethods(unittest.TestCase):
     def test_valid_non_product_page(self):
         """Tests if a valid non product url yields a non product page object"""
         route = "/ganhe-brindes"
-        url = sh.get_url(self._domain, route)
+        url = helpers.get_url(self._domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
@@ -77,6 +77,7 @@ class TestPageMethods(unittest.TestCase):
     def test_free_memory(self):
         """Tests 'free' method to dump unused memory"""
         raise NotImplementedError
+
 
 class TestHelperFunctions(unittest.TestCase):
     """Tests the helper functions."""
