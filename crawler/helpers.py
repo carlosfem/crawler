@@ -48,6 +48,8 @@ def pages_to_csv(filename, pages, path=""):
     filename = add_extension(filename, ".csv")
     if not path:
         filename = os.path.join(os.pardir, filename)
+    else:
+        filename = path + filename
     with open(filename, 'w', newline='') as myfile:
         wr = csv.writer(myfile)
         for page in pages:

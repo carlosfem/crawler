@@ -22,7 +22,7 @@ class Crawler(object):
     _timeout = 10  # seconds before raising wp.TimeoutException
 
     def __init__(
-            self, domain, visits_limit=1e4, greedy=True,
+            self, domain, visits_limit=1e4, greedy=False,
             indentity_target=lambda page: True):
 
         self.root_page = wp.WebPage(domain)
@@ -60,7 +60,7 @@ class Crawler(object):
             manager.manage()
 
             unvisited = self._get_unvisited_urls(self._inner_urls)
-            print("There are {} URLs to visit on the next iteration".format(len(unvisited)), end="")
+            #print("There are {} URLs to visit on the next iteration".format(len(unvisited)), end="")
 
     def _inner_loop(self, queue):
         """Runs the inner loop of the iterative process.
@@ -75,14 +75,6 @@ class Crawler(object):
                 gc.collect()
             self._handle_new_page(url)
 
-    def _get_unvisited_urls(self, urls):
-        """set: Return the unvisited URLs among the ones given."""
-        unvisited = set()
-        for url in urls:
-            if url not in self.visited_urls and url not in self.invalid_urls:
-                unvisited.add(url)
-        return unvisited
-
     def _handle_new_page(self, url):
         """Handles the visit to a new page.
         Args:
@@ -91,7 +83,7 @@ class Crawler(object):
             instruction to move forward with the algorithm.
         """
 
-        print("N: {}; URL: {}".format(len(self.visited_urls), url))
+        #print("N: {}; URL: {}".format(len(self.visited_urls), url))
         self.visited_urls.add(url)
 
         try:
@@ -115,9 +107,17 @@ class Crawler(object):
         for a few seconds after getting timed out on a request, because this
         could mean the domain might consider you a threat.
         """
-        print(str(exception))
+        #print(str(exception))
         time.sleep(wait)
         self.visited_urls.remove(url)
+
+    def _get_unvisited_urls(self, urls):
+        """set: Return the unvisited URLs among the ones given."""
+        unvisited = set()
+        for url in urls:
+            if url not in self.visited_urls and url not in self.invalid_urls:
+                unvisited.add(url)
+        return unvisited
 
 
 if __name__ == "__main__":
@@ -126,11 +126,11 @@ if __name__ == "__main__":
 
     try:
         domain = "https://www.epocacosmeticos.com.br"
-        crawler = Crawler(domain, visits_limit=1000, greedy=False,
+        crawler = Crawler(domain, visits_limit=10, greedy=False,
                           indentity_target=lambda page: page.is_product)
 
-        crawler.iterative_crawl(15)
-        #crawler.export_csv("output")
+        crawler.iterative_crawl(10)
+        crawler.export_csv("output")
     except KeyboardInterrupt:
         print("Crawling interrupted by the user!")
 

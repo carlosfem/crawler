@@ -22,7 +22,12 @@ import thread_manager as tm
 class TestPageMethods(unittest.TestCase):
     """Tests the behaviour of the WebPage class."""
 
-    _domain = "www.epocacosmeticos.com.br"
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.domain = "www.epocacosmeticos.com.br"
+        self.domain_page = wp.WebPage(self.domain)
+        self.domain_urls = self.domain_page.child_urls
 
     def test_invalid_url(self):
         """Tests if an invalid url raises URLError"""
@@ -37,10 +42,10 @@ class TestPageMethods(unittest.TestCase):
 
     def test_valid_domain_page(self):
         """Tests if the domain page follows the expected standards"""
-        page = wp.WebPage(self._domain)
+        page = self.domain_page
 
         self.assertTrue(page.child_urls)
-        self.assertEqual(page.domain, self._domain)
+        self.assertEqual(page.domain, self.domain)
 
         # Verifies that there are no duplicate child pages
         self.assertEqual(len(page.child_urls), len(set(page.child_urls)))
@@ -55,18 +60,18 @@ class TestPageMethods(unittest.TestCase):
     def test_valid_product_page(self):
         """Tests if a valid product url yields a full product page object"""
         route = "/hypnose-eau-de-toilette-lancome-perfume-feminino/p"
-        url = helpers.get_url(self._domain, route)
+        url = helpers.get_url(self.domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
         self.assertTrue(page.domain)
         self.assertTrue(page.is_product)
-        self.assertEqual(page.domain, self._domain)
+        self.assertEqual(page.domain, self.domain)
 
     def test_valid_non_product_page(self):
         """Tests if a valid non product url yields a non product page object"""
         route = "/ganhe-brindes"
-        url = helpers.get_url(self._domain, route)
+        url = helpers.get_url(self.domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
@@ -76,25 +81,47 @@ class TestPageMethods(unittest.TestCase):
 
     def test_free_memory(self):
         """Tests 'free' method to dump unused memory"""
-        raise NotImplementedError
-
-
-class TestHelperFunctions(unittest.TestCase):
-    """Tests the helper functions."""
-    pass
+        page = self.domain_page
+        page.free()
+        self.assertTrue(len(page._child_urls) == 0)
+        self.assertTrue(len(page._soup) == 0)
 
 
 class TestCrawlerLogic(unittest.TestCase):
     """Tests the core logic of the crawler."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        domain = "https://www.epocacosmeticos.com.br"
+        self.crawler = cw.Crawler(
+            domain, visits_limit=10, greedy=False,
+            indentity_target=lambda page: page.is_product)
+        self.crawler.iterative_crawl(10)
+
+    def test_crawler_basics(self):
+        """Tests the basic patterns expected on this simple crawler result."""
+        crawler = self.crawler
+        self.assertTrue(len(crawler.visited_urls) > 0)
+        self.assertTrue(len(crawler._inner_urls) > 0)
+        self.assertTrue(len(crawler.other_pages) > 0)
+
     def test_export_csv(self):
         """Tests csv is correctly exported given a list of pages."""
-        # Erase the csv after the test!
-        raise NotImplementedError
+        filename = "test.csv"
+        self.crawler.export_csv(filename)
 
-    def test_get_unvisited(self):
+        filepath = os.path.join(os.pardir, filename)
+        self.assertTrue(os.path.exists(filepath))
+        os.remove(filepath)
+        self.assertFalse(os.path.exists(filepath))
+
+    def test_get_unvisited_urls(self):
         """Tests method to retrieve the unvisited URLs."""
-        raise NotImplementedError
+        page = self.crawler.root_page
+        unvisited = self.crawler._get_unvisited_urls(page.child_urls)
+        self.assertTrue(unvisited.isdisjoint(self.crawler.visited_urls))
+        self.assertTrue(unvisited.isdisjoint(self.crawler.invalid_urls))
 
     def test_thread_manager(self):
         operations = ["op{}".format(i) for i in range(6)]
