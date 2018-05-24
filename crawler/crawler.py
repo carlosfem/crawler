@@ -101,9 +101,10 @@ class Crawler(object):
             self.invalid_urls.add(url)
 
     def _on_timeout_exception(self, url, exception, wait=60):
-        """Event handler to deal with timeout events. It's important to wait
-        for a few seconds after getting timed out on a request, because this
-        could mean the domain might consider you a threat.
+        """Event handler to deal with timeout events.
+        Note:
+            It's important to wait for a few seconds after getting timed out,
+            trying the domain you are not a threat.
         """
         print(str(exception))
         time.sleep(wait)
@@ -131,11 +132,12 @@ if __name__ == "__main__":
 
     print("Process completed in {} seconds".format(time.time() - t))
 
-
-# Crie uma funcionalidade para construir Paginas a partir do csv exportado
-# Exporte algum arquivo com todas as informações necessárias para reconstruir o crawler e continuar de onde parou
-
 #    domain = "https://www.epocacosmeticos.com.br"
 #    page = wp.WebPage(domain)
+
+
+# Pergunta infra: primeiro eu tentaria entender o motivo de tantos acessos,
+#                 existe algo que possa melhorar em relação a forma que o
+#                 cliente interage com a página? Talvez
 
 
