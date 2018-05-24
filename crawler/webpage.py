@@ -87,12 +87,9 @@ class WebPage():
         for url in urls:
             domain = helpers.get_domain(url)
             if domain == self.domain:
-                full_url = helpers.safe_url(url)
+                self._child_urls.add(helpers.safe_url(url))
             elif domain == "":
-                full_url = helpers.safe_url(self.domain + url)
-            else:
-                continue
-            self._child_urls.add(full_url)
+                self._child_urls.add(helpers.safe_url(self.domain + url))
         return self._child_urls
 
     @property
