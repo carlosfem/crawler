@@ -50,7 +50,7 @@ OK
 
 ## Examples
 
-After installing the package, it's very easy to begin scraping the web, the following code snippet shows a simple example of how to scrape the domain https://www.epocacosmeticos.com.br with a few restrictions:
+After installing the package, it's very easy to begin scraping the web, the following code snippet shows a simple example of how to scrape the domain https://www.epocacosmeticos.com.br and export a csv file. The program runs with the following specifications:
 
 - The search will be limited to 100 http requests;
 - Ten parallel workers will be executing the requests;
