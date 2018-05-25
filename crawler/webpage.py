@@ -22,8 +22,8 @@ class WebPage():
 
     Attributes:
         url (str): url of the page, must be a valid url.
-        product_tag (str): type of html tag that identifies the product.
-        product_class (str): class of the html tag that identifies the product.
+        target_tag (str): type of html tag that identifies the target.
+        target_class (str): class of the html tag that identifies the target.
         timeout (float): time in seconds before timing out the request.
 
     Raises:
@@ -32,26 +32,26 @@ class WebPage():
         AttributeError: If the url is not a string.
     """
 
-    _INVALID_PRODUCT = "N/A"
+    _INVALID_TARGET = "N/A"
     _AGENT = "Academic crawler 1.0 created by Carlos Monteiro. Strictly for python studies."
 
     def __init__(
-            self, url, product_tag="div",
-            product_class="productName", timeout=2):
+            self, url, target_tag="div",
+            target_class="productName", timeout=2):
 
         self.url = helpers.safe_url(url)
-        self.product_tag = product_tag
-        self.product_class = product_class
+        self.target_tag = target_tag
+        self.target_class = target_class
         self.timeout = timeout
 
         self._soup = ""
         self._child_urls = set()
 
-        div = self.soup.find(self.product_tag, {"class": self.product_class})
+        div = self.soup.find(self.target_tag, {"class": self.target_class})
 
         self.title = self.soup.find("title").text
         self.domain = helpers.get_domain(self.url)
-        self.product_name = self._INVALID_PRODUCT if div is None else div.text
+        self.target_name = self._INVALID_TARGET if div is None else div.text
 
         # dump
         del div
@@ -93,15 +93,15 @@ class WebPage():
         return self._child_urls
 
     @property
-    def is_product(self):
-        """bool: return True if the page is a product page."""
-        return self.product_name != self._INVALID_PRODUCT
+    def valid_target(self):
+        """bool: return True if the page matches the target specification."""
+        return self.target_name != self._INVALID_TARGET
 
     def __str__(self):
         """Overloads the 'str' method"""
-        if self.is_product:
-            rep = "Product Name: {}; Title: {}; URL: {}".format(
-                self.product_name, self.title, self.url
+        if self.valid_target:
+            rep = "Target Text: {}; Title: {}; URL: {}".format(
+                self.target_name, self.title, self.url
             )
         else:
             rep = "Title: {}; URL: {}".format(self.title, self.url)

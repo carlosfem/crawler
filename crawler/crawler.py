@@ -26,7 +26,7 @@ class Crawler(object):
 
     def __init__(
             self, domain, req_limit=1e4, greedy=False,
-            indentify_target=lambda page: True):
+            indentify_target=lambda page: True, log_file="log_crawl"):
 
         # Initialize
         self.root_page = wp.WebPage(domain)
@@ -35,18 +35,24 @@ class Crawler(object):
         self.visited_urls = set()
         self.invalid_urls = set()
         self.inner_urls = set()
+        self.unvisited = set()
         self.manager = None
 
         # Crawl parameters
         self.req_limit = req_limit
         self.greedy = greedy
         self.identify_target = indentify_target
+        self.log_file = log_file
+        self.log_frequency = req_limit/10
 
-    def export_csv(self, filename):
+    def export_csv(self, filename, only_targets=True):
         """Export the results to a csv file."""
-        helpers.pages_to_csv(filename, self.target_pages.values())
+        exported = self.target_pages.values()
+        if not only_targets:
+            exported = list(exported) + list(self.other_pages.values())
+        helpers.pages_to_csv(filename, exported)
 
-    def iterative_crawl(self, n_workers):
+    def run(self, n_workers):
         """Iterative function to find and store all pages within a domain.
         Args:
             n_workers (int): number of workers executing the inner loop.
@@ -57,19 +63,17 @@ class Crawler(object):
             4 - Request and parse each URL, updating the sets and dicts;
             5 - Update the non visited URL set keep going with the outer loop.
         """
-        unvisited = self._get_unvisited_urls(self.root_page.child_urls)
-        while len(unvisited) > 0 and len(self.visited_urls) < self.req_limit:
+        self.unvisited = self._get_unvisited_urls(self.root_page.child_urls)
+        while len(self.unvisited) > 0 and len(self.visited_urls) < self.req_limit:
             try:
                 self.inner_urls = set()
                 self.manager = ThreadingManager(self, n_workers)
-                self.manager.manage(unvisited, "_inner_loop")
-                unvisited = self._get_unvisited_urls(self.inner_urls)
+                self.manager.manage(list(self.unvisited), "_inner_loop")
+                self.unvisited = self._get_unvisited_urls(self.inner_urls)
             except KeyboardInterrupt:
                 self.manager.stop_all_workers()
-                print("Crawling interrupted...")
+                helpers.log_to_file("Crawling interrupted...", self.log_file)
                 return
-
-            print("There are {} URLs to visit on the next iteration".format(len(unvisited)), end="")
 
     def _inner_loop(self, url):
         """Runs the inner loop of the iterative process.
@@ -79,11 +83,15 @@ class Crawler(object):
         Args:
             url (str): the url being requested.
         """
-        print("N: {}; URL: {}".format(len(self.visited_urls), url))
 
         self.visited_urls.add(url)
         if len(self.visited_urls) > self.req_limit:
             self.manager.stop_all_workers()
+        if len(self.visited_urls) % self.log_frequency == 0:
+            msg = "Visited pages: {}; Targets found {}; Running visits {}".format(
+                len(self.visited_urls), len(self.target_pages), len(self.unvisited))
+            helpers.log_to_file(msg, self.log_file)
+
         try:
 
             new_page = wp.WebPage(url, timeout=self._timeout)
@@ -106,7 +114,7 @@ class Crawler(object):
             It's important to wait for a few seconds after getting timed out,
             trying the domain you are not a threat.
         """
-        print(str(exception))
+        helpers.log_to_file(str(exception), self.log_file)
         time.sleep(wait)
         self.visited_urls.remove(url)
 
@@ -116,7 +124,7 @@ class Crawler(object):
         for url in urls:
             if url not in self.visited_urls and url not in self.invalid_urls:
                 unvisited.add(url)
-        return list(unvisited)  # sets are not subscriptable
+        return unvisited  # sets are not subscriptable
 
 
 if __name__ == "__main__":
@@ -124,20 +132,9 @@ if __name__ == "__main__":
     t = time.time()
 
     domain = "https://www.epocacosmeticos.com.br"
-    crawler = Crawler(domain, req_limit=1000, greedy=False,
-                      indentify_target=lambda page: page.is_product)
+    crawler = Crawler(domain, req_limit=100, greedy=False,
+                      indentify_target=lambda page: page.valid_target)
+    crawler.run(10)
+    crawler.export_csv("output", only_targets=False)
 
-    crawler.iterative_crawl(20)
-    crawler.export_csv("output")
-
-    print("Process completed in {} seconds".format(time.time() - t))
-
-#    domain = "https://www.epocacosmeticos.com.br"
-#    page = wp.WebPage(domain)
-
-
-# Pergunta infra: primeiro eu tentaria entender o motivo de tantos acessos,
-#                 existe algo que possa melhorar em relação a forma que o
-#                 cliente interage com a página? Talvez
-
-
+    helpers.log_to_file("Process completed in {} seconds".format(time.time() - t), "log_crawl")

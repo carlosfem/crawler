@@ -57,27 +57,27 @@ class TestPageMethods(unittest.TestCase):
         ]
         self.assertFalse(diff_domain_children)
 
-    def test_valid_product_page(self):
-        """Tests if a valid product url yields a full product page object"""
+    def test_valid_target_page(self):
+        """Tests if a valid target url yields a full target page."""
         route = "/hypnose-eau-de-toilette-lancome-perfume-feminino/p"
         url = helpers.get_url(self.domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
         self.assertTrue(page.domain)
-        self.assertTrue(page.is_product)
+        self.assertTrue(page.valid_target)
         self.assertEqual(page.domain, self.domain)
 
-    def test_valid_non_product_page(self):
-        """Tests if a valid non product url yields a non product page object"""
+    def test_invalid_target_page(self):
+        """Tests if an invalid target url yields an invalid target page."""
         route = "/ganhe-brindes"
         url = helpers.get_url(self.domain, route)
         page = wp.WebPage(url)
 
         self.assertTrue(page.title)
         self.assertTrue(page.domain)
-        self.assertFalse(page.is_product)
-        self.assertEqual(page.product_name, page._INVALID_PRODUCT)
+        self.assertFalse(page.valid_target)
+        self.assertEqual(page.target_name, page._INVALID_TARGET)
 
     def test_free_memory(self):
         """Tests 'free' method to dump unused memory"""
@@ -95,15 +95,15 @@ class TestCrawlerLogic(unittest.TestCase):
 
         domain = "https://www.epocacosmeticos.com.br"
         self.crawler = cw.Crawler(
-            domain, visits_limit=10, greedy=False,
-            indentity_target=lambda page: page.is_product)
-        self.crawler.iterative_crawl(10)
+            domain, req_limit=10, greedy=False,
+            indentify_target=lambda page: page.valid_target)
+        self.crawler.run(10)
 
     def test_crawler_basics(self):
         """Tests the basic patterns expected on this simple crawler result."""
         crawler = self.crawler
         self.assertTrue(len(crawler.visited_urls) > 0)
-        self.assertTrue(len(crawler._inner_urls) > 0)
+        self.assertTrue(len(crawler.inner_urls) > 0)
         self.assertTrue(len(crawler.other_pages) > 0)
 
     def test_export_csv(self):
@@ -128,16 +128,16 @@ class TestCrawlerLogic(unittest.TestCase):
         dummy = DummyThreadingTester(operations, sleeptime=0.1)
 
         t0 = time.time()
-        manager = tm.ThreadingManager(dummy, operations, 1, "task")
-        manager.manage()
+        manager = tm.ThreadingManager(dummy, 1)
+        manager.manage(operations, "task")
 
         t1 = time.time()
-        manager = tm.ThreadingManager(dummy, operations, 3, "task")
-        manager.manage()
+        manager = tm.ThreadingManager(dummy, 3)
+        manager.manage(operations, "task")
 
         t2 = time.time()
-        manager = tm.ThreadingManager(dummy, operations, 6, "task")
-        manager.manage()
+        manager = tm.ThreadingManager(dummy, 6)
+        manager.manage(operations, "task")
         t3 = time.time()
 
         self.assertGreater(t1-t0, t2-t1)
@@ -153,9 +153,7 @@ class DummyThreadingTester(object):
 
     def task(self, queue):
         """Dummy task, sleeps for a few seconds"""
-        operations = queue.get()
-        for operation in operations:
-            time.sleep(self.sleeptime)
+        time.sleep(self.sleeptime)
 
 
 if __name__ == "__main__":
