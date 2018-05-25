@@ -52,13 +52,6 @@ class Crawler(object):
         self.log_frequency = req_limit/10
         self.logger = helpers.get_debug_logger("mylogger")
 
-        # Init message
-        msg = "Initiating crawl...\n" \
-              + "Domain: {}\n".format(domain) \
-              + "Request limit: {}\n".format(req_limit) \
-              + "Greedy mode: {}\n".format("Yes" if greedy else "No")
-        self.logger.debug(msg)
-
     def export_csv(self, filename, only_targets=True):
         """Export the results to a csv file."""
         exported = self.target_pages.values()
@@ -77,6 +70,13 @@ class Crawler(object):
             4 - Request and parse each URL, updating the sets and dicts;
             5 - Update the non visited URL set keep going with the outer loop.
         """
+
+        msg = "Initiating crawl...\n" \
+              + "Domain: {}\n".format(self.root_page.domain) \
+              + "Request limit: {}\n".format(self.req_limit) \
+              + "Greedy mode: {}\n".format("Yes" if self.greedy else "No")
+        self.logger.debug(msg)
+
         self.unvisited = self._get_unvisited_urls(self.root_page.child_urls)
         while len(self.unvisited) > 0 and len(self.visited_urls) < self.req_limit:
             try:
@@ -141,16 +141,3 @@ class Crawler(object):
             if url not in self.visited_urls and url not in self.invalid_urls:
                 unvisited.add(url)
         return unvisited  # sets are not subscriptable
-
-
-if __name__ == "__main__":
-
-    t = time.time()
-
-    domain = "https://www.epocacosmeticos.com.br"
-    crawler = Crawler(domain, req_limit=100, greedy=False,
-                      indentify_target=lambda page: page.valid_target)
-    crawler.run(10)
-    crawler.export_csv("output", only_targets=False)
-
-    print("Process completed in {} seconds".format(time.time() - t))
