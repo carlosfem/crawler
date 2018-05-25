@@ -9,6 +9,7 @@ import os
 import csv
 import pickle
 import urllib
+import logging
 
 
 def safe_url(url):
@@ -41,6 +42,13 @@ def add_extension(name, extension):
     return name if name.endswith(extension) else name + extension
 
 
+def chunks(list_, size):
+    """Breaks a list into chunks of the same size."""
+    size = 1 if size == 0 else size
+    for i in range(0, len(list_), size):
+        yield list_[i:i+size]
+
+
 def pages_to_csv(filename, pages, path=""):
     """Writes a csv file with information about the webpages.
     Raises PermissionError if the file is already open.
@@ -56,11 +64,17 @@ def pages_to_csv(filename, pages, path=""):
             wr.writerow([str(page)])
 
 
-def chunks(list_, size):
-    """Breaks a list into chunks of the same size."""
-    size = 1 if size == 0 else size
-    for i in range(0, len(list_), size):
-        yield list_[i:i+size]
+def get_debug_logger(name):
+    """Createas a configured instance of a debug logger."""
+    logger = logging.getLogger(name)
+    if len(logger.handlers) == 0:
+        logger.setLevel(logging.DEBUG)
+        stream = logging.StreamHandler()
+        stream.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(asctime)s %(message)s", "%H:%M:%S")
+        stream.setFormatter(formatter)
+        logger.addHandler(stream)
+    return logger
 
 
 def save_objects(collection, filename):

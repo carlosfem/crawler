@@ -15,18 +15,25 @@ from thread_manager import ThreadingManager
 
 
 class Crawler(object):
-    """Crawler docstring.
+    """Object that implements the logic to perform the crawling of a domain.
     Note:
-        Foo
+        The crawling is performed in an iterative manner, following the setps
+        described in the docstring of the 'iterative_crawl' method. This crawl
+        can be parallelized, splitting the task between an arbitrary number of
+        workers, as long as it doesn't raise suspicion on the domain.
     Args:
-        Bar
+        domain (str): the domain that needs to be crawled.
+        req_limit (int): upper limit on the number of requests before stopping
+        greedy (bool): flag to determine whether or not to keep parsed html on
+                       each visited page.
+        identify_target (function): function to identify target pages.
     """
 
     _timeout = 10  # seconds before raising wp.TimeoutException
 
     def __init__(
             self, domain, req_limit=1e4, greedy=False,
-            indentify_target=lambda page: True, log_file="log_crawl"):
+            indentify_target=lambda page: True):
 
         # Initialize
         self.root_page = wp.WebPage(domain)
@@ -42,8 +49,15 @@ class Crawler(object):
         self.req_limit = req_limit
         self.greedy = greedy
         self.identify_target = indentify_target
-        self.log_file = log_file
         self.log_frequency = req_limit/10
+        self.logger = helpers.get_debug_logger("mylogger")
+
+        # Init message
+        msg = "Initiating crawl...\n" \
+              + "Domain: {}\n".format(domain) \
+              + "Request limit: {}\n".format(req_limit) \
+              + "Greedy mode: {}\n".format("Yes" if greedy else "No")
+        self.logger.debug(msg)
 
     def export_csv(self, filename, only_targets=True):
         """Export the results to a csv file."""
@@ -72,8 +86,10 @@ class Crawler(object):
                 self.unvisited = self._get_unvisited_urls(self.inner_urls)
             except KeyboardInterrupt:
                 self.manager.stop_all_workers()
-                helpers.log_to_file("Crawling interrupted...", self.log_file)
+                self.logger.debug("Crawling interrupted...")
                 return
+
+        self.logger.debug("Crawling completed...")
 
     def _inner_loop(self, url):
         """Runs the inner loop of the iterative process.
@@ -90,7 +106,7 @@ class Crawler(object):
         if len(self.visited_urls) % self.log_frequency == 0:
             msg = "Visited pages: {}; Targets found {}; Running visits {}".format(
                 len(self.visited_urls), len(self.target_pages), len(self.unvisited))
-            helpers.log_to_file(msg, self.log_file)
+            self.logger.debug(msg)
 
         try:
 
@@ -114,7 +130,7 @@ class Crawler(object):
             It's important to wait for a few seconds after getting timed out,
             trying the domain you are not a threat.
         """
-        helpers.log_to_file(str(exception), self.log_file)
+        self.logger.debug(str(exception))
         time.sleep(wait)
         self.visited_urls.remove(url)
 
@@ -137,4 +153,4 @@ if __name__ == "__main__":
     crawler.run(10)
     crawler.export_csv("output", only_targets=False)
 
-    helpers.log_to_file("Process completed in {} seconds".format(time.time() - t), "log_crawl")
+    print("Process completed in {} seconds".format(time.time() - t))
